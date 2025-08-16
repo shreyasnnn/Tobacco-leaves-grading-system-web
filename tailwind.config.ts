@@ -18,6 +18,9 @@ const config: Config = {
         heading: ["Poppins", "sans-serif"],
       },
       colors: {
+        usePrimary:'#E5911A',
+        useDark: '#121212',
+        useLight: '#ffffff',
         useGrey: {
           100: "#fefeff",
           200: "#d7d9db",
@@ -35,7 +38,7 @@ const config: Config = {
           100: "#fcf1c6",
         },
         useOrange: {
-          400: "#e07a2d",
+          400: "#E5911A",
           500: "#b7502f",
         },
         useBrown: {
