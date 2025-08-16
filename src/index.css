@@ -5,6 +5,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Custom text selection color */
+::selection {
+  background-color: #3fcb70; /* Tailwind's green-100 */
+  color: #065f46; /* Tailwind's green-800 for good contrast */
+}
+
+/* For Firefox */
+::-moz-selection {
+  background-color: #3fcb70;
+  color: #065f46;
+}
+
 @theme inline {
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);

@@ -15,7 +15,7 @@ export function Button({
 }: ButtonProps) {
   const variantClasses = {
     primary: "bg-black text-white",
-    secondary: "bg-orange-400 text-black border",
+    secondary: "bg-green-700 text-white border",
     empty: "bg-transparent text-inherit",
   };
 

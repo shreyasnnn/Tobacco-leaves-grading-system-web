@@ -1,5 +1,5 @@
 import React, { useState, useRef, ChangeEvent } from "react";
-import { supabase } from "../lib/supabaseClient";
+import { supabase } from "../services/supabase";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface LocationState {

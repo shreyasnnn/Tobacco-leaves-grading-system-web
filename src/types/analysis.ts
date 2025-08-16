@@ -1,4 +1,7 @@
 // types/analytics.ts
+import {grade} from '../dataController/index'
+
+export type Grade = typeof grade[number]; 
 export interface GradeDistribution {
   grade: string;
   count: number;
@@ -8,28 +11,21 @@ export interface GradeDistribution {
 
 export interface QualityTrend {
   date: string;
-  averageConfidence: number;
-  totalUploads: number;
+  value: number;
 }
 
-export interface MonthlyStats {
-  month: string;
-  ChengShu: number;
-  JiaShu: number;
-  QianShu: number;
-  ShangShu: number;
+export interface ConfidenceByGrade {
+  grade: string;
+  confidence: number;
 }
 
 export interface AnalyticsData {
-  totalUploads: number;
+  totalPredictions: number;
   averageConfidence: number;
   mostCommonGrade: string;
   gradeDistribution: GradeDistribution[];
   qualityTrends: QualityTrend[];
-  monthlyStats: MonthlyStats[];
-  recentActivity: {
-    thisWeek: number;
-    thisMonth: number;
-    percentageChange: number;
-  };
+  confidenceByGrade: ConfidenceByGrade[];
+  trendsChange: number;
+  confidenceChange: number;
 }

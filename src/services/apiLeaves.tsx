@@ -1,5 +1,6 @@
 // src/services/apiLeaves.ts
 import { supabase } from "./supabase";
+import { getGradeColor } from "../utils/gradeColor";
 
 // Type for a single leave record
 export interface LeaveRecord {
@@ -8,6 +9,7 @@ export interface LeaveRecord {
   image_url: string;
   confidence: string;
   processed_at: string;
+  color?: ReturnType<typeof getGradeColor>; // Optional color info
 }
 
 // Type for filters
@@ -22,7 +24,7 @@ export interface HistoryFilters {
 // Function to fetch leaves with dynamic filters
 export async function apiLeaves(
   filters: HistoryFilters = {}
-): Promise<{ data: LeaveRecord[] | null; error: any }> {
+): Promise<{ data: (LeaveRecord & { color: ReturnType<typeof getGradeColor> })[] | null; error: any }> {
   let query = supabase.from("upload_history").select("*");
 
   if (filters.from) query = query.gte("processed_at", filters.from);
@@ -33,5 +35,11 @@ export async function apiLeaves(
 
   const { data, error } = await query;
 
-  return { data: data as LeaveRecord[] ?? null, error };
+  // Add color information to each record
+  const recordsWithColor = data?.map(record => ({
+    ...record,
+    color: getGradeColor(record.result)
+  })) ?? null;
+
+  return { data: recordsWithColor, error };
 }

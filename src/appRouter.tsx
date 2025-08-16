@@ -7,8 +7,9 @@ import {
   AnalysisScreen,
   RegisterScreen,
   ResultScreen,
+  AboutScreen
 } from "./screens/index";
-import { supabase } from "./lib/supabaseClient";
+import { supabase } from "./services/supabase";
 
 function AppRouter() {
   const [loading, setLoading] = useState(true);
@@ -97,6 +98,7 @@ function AppRouter() {
       <Route path="/result" element={<ResultScreen />} />
       <Route path="/history" element={<HistoryScreen />} />
       <Route path="/analysis" element={<AnalysisScreen />} />
+      <Route path="/about" element={<AboutScreen />} />
       <Route path="*" element={<div>Page Not Found</div>} />
     </Routes>
   );
