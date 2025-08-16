@@ -3,7 +3,7 @@ import { apiAnalytics } from "@/services/apiAnalysis";
 import { AnalyticsData } from "@/types/analysis";
 import NavBar from "@/components/navBar";
 
-export const AnalysisScreen: React.FC = () => {
+export default function AnalysisScreen () {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<any>(null);
@@ -323,4 +323,3 @@ export const AnalysisScreen: React.FC = () => {
   );
 };
 
-export default AnalysisScreen;

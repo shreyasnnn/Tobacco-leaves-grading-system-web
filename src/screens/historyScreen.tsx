@@ -6,6 +6,7 @@ import "react-date-range/dist/theme/default.css";
 import NavBar from "@/components/navBar";
 import { grades } from "../dataController/index";
 import { Button } from "@/components/button";
+import Spinner from "@/components/spinner";
 
 interface SelectionRange {
   startDate: Date;
@@ -13,7 +14,7 @@ interface SelectionRange {
   key: string;
 }
 
-export const HistoryScreen: React.FC = () => {
+export default function HistoryScreen ()  {
   const [data, setData] = useState<LeaveRecord[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<any>(null);
@@ -223,7 +224,7 @@ export const HistoryScreen: React.FC = () => {
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+              <Spinner size={12} color="border-emerald-600" />
             </div>
           ) : error ? (
             <div className="text-center p-8">
@@ -488,4 +489,3 @@ export const HistoryScreen: React.FC = () => {
   );
 };
 
-export default HistoryScreen;
