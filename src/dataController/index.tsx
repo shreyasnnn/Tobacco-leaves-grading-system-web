@@ -1,5 +1,8 @@
 import Smitha from "../assets/images/Smitha.jpg"
 import Shreyas from "../assets/images/shreyas.jpg"
+import Adnan from "../assets/images/Adnan.jpg"
+import Varun from "../assets/images/Varun.jpg"
+import Pranav from "../assets/images/Pranav.jpg"
 
 export const modelInfo = {
   version: "V1.2",
@@ -38,21 +41,21 @@ export const teamMembers: TeamMember[] = [
     name: "Pranav S Karpur",
     role: "Model Training",
     bio: "Curates datasets and improves model accuracy",
-    imageUrl: Smitha,
+    imageUrl: Pranav,
   },
   {
     id: "4",
     name: "Varun N S",
     role: "UX/UI Design",
     bio: "Ensures seamless user experience",
-    imageUrl: Smitha,
+    imageUrl: Varun,
   },
   {
     id: "5",
     name: "Shaikh Adnan Iqbal",
     role: "Data Analyst",
     bio: "Maintains our robust processing pipeline & data",
-    imageUrl: Smitha,
+    imageUrl: Adnan,
   }
 ];
 
