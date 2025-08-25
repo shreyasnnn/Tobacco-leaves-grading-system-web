@@ -12,7 +12,7 @@ type PredictionResponse = {
   confidence: number;
 };
 
-export const HomeScreen = () => {
+export default function HomeScreen () {
   const navigate = useNavigate();
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [capturedFile, setCapturedFile] = useState<File | null>(null);

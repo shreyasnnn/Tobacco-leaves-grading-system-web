@@ -16,7 +16,7 @@ const defaultAnalyticsData: AnalyticsData = {
   trendsChange: 0
 };
 
-export const AboutScreen = () => {
+export default function AboutScreen(){
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData>(defaultAnalyticsData);
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null); // Add userId state

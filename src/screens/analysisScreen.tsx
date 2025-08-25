@@ -5,7 +5,7 @@ import NavBar from "@/components/navBar";
 import { getGradeColor, getProgressBarColor } from "@/utils/gradeColor";
 import { supabase } from "@/services/supabase";
 
-export const AnalysisScreen: React.FC = () => {
+export default function AnalysisScreen () {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<any>(null);
@@ -421,4 +421,3 @@ export const AnalysisScreen: React.FC = () => {
   );
 };
 
-export default AnalysisScreen;

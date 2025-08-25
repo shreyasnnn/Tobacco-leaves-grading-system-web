@@ -1,15 +1,16 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
-import {
-  HomeScreen,
-  LoginScreen,
-  HistoryScreen,
-  AnalysisScreen,
-  RegisterScreen,
-  ResultScreen,
-  AboutScreen
-} from "./screens/index";
 import { supabase } from "./services/supabase";
+import Spinner from "./components/spinner";
+
+// Lazy imports
+const HomeScreen = lazy(() => import("./screens/homeScreen"));
+const LoginScreen = lazy(() => import("./screens/loginScreen"));
+const RegisterScreen = lazy(() => import("./screens/registerScreen"));
+const ResultScreen = lazy(() => import("./screens/resultScreen"));
+const HistoryScreen = lazy(() => import("./screens/historyScreen"));
+const AnalysisScreen = lazy(() => import("./screens/analysisScreen"));
+const AboutScreen = lazy(() => import("./screens/aboutScreen"));
 
 function AppRouter() {
   const [loading, setLoading] = useState(true);
@@ -91,16 +92,18 @@ function AppRouter() {
   }
 
   return (
-    <Routes>
-      <Route path="/" element={<HomeScreen />} />
-      <Route path="/login" element={<LoginScreen />} />
-      <Route path="/register" element={<RegisterScreen />} />
-      <Route path="/result" element={<ResultScreen />} />
-      <Route path="/history" element={<HistoryScreen />} />
-      <Route path="/analysis" element={<AnalysisScreen />} />
-      <Route path="/about" element={<AboutScreen />} />
-      <Route path="*" element={<div>Page Not Found</div>} />
-    </Routes>
+    <Suspense fallback={<Spinner />}>
+      <Routes>
+        <Route path="/" element={<HomeScreen />} />
+        <Route path="/login" element={<LoginScreen />} />
+        <Route path="/register" element={<RegisterScreen />} />
+        <Route path="/result" element={<ResultScreen />} />
+        <Route path="/history" element={<HistoryScreen />} />
+        <Route path="/analysis" element={<AnalysisScreen />} />
+        <Route path="/about" element={<AboutScreen />} />
+        <Route path="*" element={<div>Page Not Found</div>} />
+      </Routes>
+    </Suspense>
   );
 }
 

@@ -8,7 +8,7 @@ interface LocationState {
   password?: string;
 }
 
-export const RegisterScreen: React.FC = () => {
+export default function RegisterScreen ()  {
   const [name, setName] = useState<string>("");
   const [mobile, setMobile] = useState<string>("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);

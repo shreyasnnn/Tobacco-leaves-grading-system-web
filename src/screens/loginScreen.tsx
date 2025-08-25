@@ -3,7 +3,7 @@ import { supabase } from "../services/supabase";
 import { useNavigate } from "react-router-dom";
 import { LeafIcon } from "lucide-react";
 
-export const LoginScreen = () => {
+export default function LoginScreen  ()  {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);

@@ -4,7 +4,7 @@ import NavBar from "@/components/navBar";
 import { Button } from "@/components/button";
 import { ToastNotification } from "../components/toastNotification";
 
-export const ResultScreen: React.FC = () => {
+export default function ResultScreen()  {
   const [error, setError] = useState<string | null>(null);
   const [width, setWidth] = useState(0);
   const [isSaving, setIsSaving] = useState(false);
@@ -156,4 +156,3 @@ export const ResultScreen: React.FC = () => {
   );
 };
 
-export default ResultScreen;
