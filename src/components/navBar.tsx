@@ -93,11 +93,11 @@ export default function NavBar() {
           <Button
             variant="empty"
             className="w-full text-left hover:bg-green-100"
-            onClick={() => navigate("/analytics")}
+            onClick={() => navigate("/analysis")}
           >
             Analytics
           </Button>
-          <Button variant="empty" className="w-full text-left hover:bg-green-100">
+          <Button variant="empty" className="w-full text-left hover:bg-green-100" onClick={() => navigate("/about")}>
             About
           </Button>
 
