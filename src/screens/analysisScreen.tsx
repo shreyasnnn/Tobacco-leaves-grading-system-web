@@ -2,11 +2,14 @@ import React, { useEffect, useState } from "react";
 import { apiAnalytics } from "@/services/apiAnalysis";
 import { AnalyticsData } from "@/types/analysis";
 import NavBar from "@/components/navBar";
+import { getGradeColor, getProgressBarColor } from "@/utils/gradeColor";
+import { supabase } from "@/services/supabase";
 
 export default function AnalysisScreen () {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<any>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   const [tooltip, setTooltip] = useState({
     visible: false,
@@ -15,37 +18,123 @@ export default function AnalysisScreen () {
     text: "",
   });
 
+  // Get current user ID from authentication
   useEffect(() => {
+    const getCurrentUserId = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        
+        if (user) {
+          setUserId(user.id);
+        } else {
+          setError(new Error("User not authenticated"));
+        }
+      } catch (error) {
+        console.error("Failed to get user ID:", error);
+        setError(error);
+      }
+    };
+    
+    getCurrentUserId();
+  }, []);
+
+  // Fetch user-specific analytics data
+  useEffect(() => {
+    if (!userId) return; // Wait for userId to be available
+    
     const fetchData = async () => {
       setIsLoading(true);
-      const { data: apiData, error: apiError } = await apiAnalytics();
-      if (apiError) setError(apiError);
-      else setData(apiData);
-      setIsLoading(false);
+      try {
+        const { data: apiData, error: apiError } = await apiAnalytics(userId);
+        if (apiError) {
+          setError(apiError);
+        } else {
+          setData(apiData);
+        }
+      } catch (err) {
+        setError(err);
+      } finally {
+        setIsLoading(false);
+      }
     };
+    
     fetchData();
-  }, []);
+  }, [userId]); // Depend on userId
+
+  // Show loading while getting user ID
+  if (!userId && !error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
+        <NavBar />
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading your analytics...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
+        <NavBar />
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading your analytics...</p>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center text-red-500 p-8">
-        <p>Error loading analytics: {error.message || "Unknown error"}</p>
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
+        <NavBar />
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="text-center text-red-500 p-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-red-100 rounded-full mb-4">
+              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">Error loading analytics</h3>
+            <p className="text-gray-500">{error.message || "Unknown error"}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!data) {
     return (
-      <div className="text-center text-gray-500 p-8">
-        <p>No analytics data available</p>
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
+        <NavBar />
+        <div className="max-w-6xl mx-auto p-6">
+          <div className="text-center text-gray-500 p-8">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gray-100 rounded-full mb-4">
+              <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-1">No analytics data available</h3>
+            <p className="text-gray-500">Start analyzing tobacco leaves to see your analytics here!</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -54,6 +143,16 @@ export default function AnalysisScreen () {
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
       <NavBar />
       <div className="relative p-6 max-w-6xl mx-auto">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold text-green-800 mb-2">
+            My Analytics Dashboard
+          </h1>
+          <p className="text-lg text-green-600">
+            Your personal tobacco leaf analysis insights
+          </p>
+        </div>
+
         {/* Tooltip */}
         {tooltip.visible && (
           <div
@@ -68,12 +167,14 @@ export default function AnalysisScreen () {
         <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
           <div className="mb-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Grade Distribution
+              Your Grade Distribution
             </h3>
             <div className="flex items-baseline gap-2">
-              <span className="text-4xl font-bold text-gray-900">100%</span>
+              <span className="text-4xl font-bold text-gray-900">
+                {data.totalPredictions}
+              </span>
               <span className="text-sm text-green-600 font-medium">
-                Total +10%
+                Total Predictions
               </span>
             </div>
           </div>
@@ -91,16 +192,14 @@ export default function AnalysisScreen () {
                       </span>
                     </div>
                     <div
-                      className="w-10 sm:w-16 bg-green-200 rounded-t-sm transition-all duration-300 hover:bg-green-300"
-                      style={{ height: `${barHeight}px` }}
+                      className={`w-10 sm:w-16 ${getGradeColor(item.grade).full} rounded-t-sm transition-all duration-300 hover:opacity-80 cursor-pointer`}
+                      style={{ height: `${Math.max(barHeight, 8)}px` }}
                       onMouseEnter={(e) =>
                         setTooltip({
                           visible: true,
                           x: e.clientX,
                           y: e.clientY,
-                          text: `${item.grade}: ${item.count} (${item.percentage.toFixed(
-                            1
-                          )}%)`,
+                          text: `${item.grade}: ${item.count} predictions (${item.percentage.toFixed(1)}%)`,
                         })
                       }
                       onMouseMove={(e) =>
@@ -128,7 +227,7 @@ export default function AnalysisScreen () {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-green-100 rounded-lg p-6">
             <h4 className="text-sm font-medium text-gray-600 mb-2">
-              Total Predictions
+              Your Total Predictions
             </h4>
             <div className="text-3xl font-bold text-gray-900">
               {data.totalPredictions.toLocaleString()}
@@ -136,7 +235,7 @@ export default function AnalysisScreen () {
           </div>
           <div className="bg-green-100 rounded-lg p-6">
             <h4 className="text-sm font-medium text-gray-600 mb-2">
-              Average Confidence
+              Your Average Confidence
             </h4>
             <div className="text-3xl font-bold text-gray-900">
               {data.averageConfidence}%
@@ -144,7 +243,7 @@ export default function AnalysisScreen () {
           </div>
           <div className="bg-green-100 rounded-lg p-6">
             <h4 className="text-sm font-medium text-gray-600 mb-2">
-              Most Common Grade
+              Your Most Common Grade
             </h4>
             <div className="text-3xl font-bold text-gray-900">
               {data.mostCommonGrade}
@@ -154,13 +253,13 @@ export default function AnalysisScreen () {
 
         {/* Trends */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-6">Trends</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-6">Your Trends</h3>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Predictions Over Time */}
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-gray-600 mb-2">
-                  Predictions Over Time
+                  Your Predictions Over Time
                 </h4>
                 <div className="flex items-baseline gap-2">
                   <span className="text-2xl font-bold text-gray-900">
@@ -169,9 +268,7 @@ export default function AnalysisScreen () {
                   </span>
                   <span
                     className={`text-sm font-medium ${
-                      data.trendsChange >= 0
-                        ? "text-green-600"
-                        : "text-red-600"
+                      data.trendsChange >= 0 ? "text-green-600" : "text-red-600"
                     }`}
                   >
                     Last 30 Days {data.trendsChange > 0 ? "+" : ""}
@@ -184,13 +281,12 @@ export default function AnalysisScreen () {
                 <svg className="w-full h-full" viewBox="0 0 300 100">
                   <polyline
                     fill="none"
-                    stroke="#15803D" // Orange-400
+                    stroke="#15803D"
                     strokeWidth="2"
                     points={data.qualityTrends
                       .map((item, index) => {
                         const x =
-                          (index /
-                            Math.max(data.qualityTrends.length - 1, 1)) *
+                          (index / Math.max(data.qualityTrends.length - 1, 1)) *
                           300;
                         const y =
                           100 -
@@ -205,20 +301,16 @@ export default function AnalysisScreen () {
                   />
                   {data.qualityTrends.map((item, index) => {
                     const x =
-                      (index /
-                        Math.max(data.qualityTrends.length - 1, 1)) *
+                      (index / Math.max(data.qualityTrends.length - 1, 1)) *
                       300;
                     const y =
                       100 -
                       (item.value /
-                        Math.max(
-                          ...data.qualityTrends.map((t) => t.value)
-                        )) *
+                        Math.max(...data.qualityTrends.map((t) => t.value))) *
                         60;
-                    const date = new Date(item.date).toLocaleDateString(
-                      "en",
-                      { month: "short" }
-                    );
+                    const date = new Date(item.date).toLocaleDateString("en", {
+                      month: "short",
+                    });
                     return (
                       <circle
                         key={index}
@@ -226,6 +318,7 @@ export default function AnalysisScreen () {
                         cy={y}
                         r="3"
                         fill="#15803D"
+                        className="cursor-pointer"
                         onMouseEnter={(e) =>
                           setTooltip({
                             visible: true,
@@ -265,26 +358,31 @@ export default function AnalysisScreen () {
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <div className="mb-4">
                 <h4 className="text-sm font-medium text-gray-600 mb-2">
-                  Confidence by Grade
+                  Your Confidence by Grade
                 </h4>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-gray-900">90%</span>
-                  <span className="text-sm text-red-600 font-medium">
-                    Average -2%
+                  <span className="text-2xl font-bold text-gray-900">
+                    {data.averageConfidence}%
+                  </span>
+                  <span className={`text-sm font-medium ${
+                    data.confidenceChange >= 0 ? "text-green-600" : "text-red-600"
+                  }`}>
+                    {data.confidenceChange > 0 ? "+" : ""}{data.confidenceChange}%
                   </span>
                 </div>
               </div>
+              
               <div className="space-y-4">
                 {data.confidenceByGrade.map((item) => (
                   <div
                     key={item.grade}
-                    className="flex items-center gap-3"
+                    className="flex items-center gap-3 cursor-pointer"
                     onMouseEnter={(e) =>
                       setTooltip({
                         visible: true,
                         x: e.clientX,
                         y: e.clientY,
-                        text: `${item.grade}: ${item.confidence}%`,
+                        text: `${item.grade}: ${item.confidence}% average confidence`,
                       })
                     }
                     onMouseMove={(e) =>
@@ -302,9 +400,9 @@ export default function AnalysisScreen () {
                       {item.grade}
                     </span>
                     <div className="flex-1">
-                      <div className="w-full bg-green-200 rounded-full h-2">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-green-700 h-2 rounded-full transition-all duration-500"
+                          className={`${getProgressBarColor(item.grade)} h-2 rounded-full transition-all duration-500`}
                           style={{ width: `${item.confidence}%` }}
                         ></div>
                       </div>

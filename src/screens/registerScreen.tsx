@@ -1,6 +1,7 @@
 import React, { useState, useRef, ChangeEvent } from "react";
 import { supabase } from "../services/supabase";
 import { useNavigate, useLocation } from "react-router-dom";
+import { Button } from "@/components/button";
 
 interface LocationState {
   email?: string;
@@ -29,13 +30,11 @@ export default function RegisterScreen ()  {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       setError("Please select a valid image file.");
       return;
     }
 
-    // Validate file size (max 5MB)
     if (file.size > 5 * 1024 * 1024) {
       setError("Image size must be less than 5MB.");
       return;
@@ -44,83 +43,48 @@ export default function RegisterScreen ()  {
     setAvatarFile(file);
     setError("");
 
-    // Create preview
     const reader = new FileReader();
     reader.onload = (e) => setAvatarPreview(e.target?.result as string);
     reader.readAsDataURL(file);
   };
 
-  // Remove selected image
   const removeImage = () => {
     setAvatarFile(null);
     setAvatarPreview(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Validate mobile number
-  const validateMobile = (mobile: string) => {
-    const mobileRegex = /^[6-9]\d{9}$/; // Indian mobile number format
-    return mobileRegex.test(mobile);
-  };
-
-  // Validate name
-  const validateName = (name: string) => {
-    return name.trim().length >= 2 && /^[a-zA-Z\s]+$/.test(name.trim());
-  };
+  const validateMobile = (mobile: string) => /^[6-9]\d{9}$/.test(mobile);
+  const validateName = (name: string) =>
+    name.trim().length >= 2 && /^[a-zA-Z\s]+$/.test(name.trim());
 
   const handleRegister = async () => {
     setError("");
-
-    if (!name.trim()) {
-      setError("Full name is required.");
-      return;
-    }
-
-    if (!validateName(name)) {
-      setError(
-        "Please enter a valid name (letters and spaces only, minimum 2 characters)."
-      );
-      return;
-    }
-
-    if (!mobile.trim()) {
-      setError("Mobile number is required.");
-      return;
-    }
-
-    if (!validateMobile(mobile)) {
-      setError("Please enter a valid 10-digit Indian mobile number.");
-      return;
-    }
+    if (!name.trim()) return setError("Full name is required.");
+    if (!validateName(name))
+      return setError("Enter a valid name (letters only, min 2 characters).");
+    if (!mobile.trim()) return setError("Mobile number is required.");
+    if (!validateMobile(mobile))
+      return setError("Enter a valid 10-digit Indian mobile number.");
 
     setLoading(true);
     setUploadProgress(0);
 
     try {
-      // Get current user
-      const { data: userData, error: authError } = await supabase.auth.getUser();
+      const { data: userData, error: authError } =
+        await supabase.auth.getUser();
       const user = userData?.user;
-
       if (authError || !user) {
         setError("You must be logged in to complete registration.");
         setLoading(false);
         return;
       }
 
-      // Check if profile exists
-      const { data: existingProfile, error: profileCheckError } = await supabase
+      const { data: existingProfile } = await supabase
         .from("profiles")
         .select("id")
         .eq("id", user.id)
         .maybeSingle();
-
-      if (profileCheckError) {
-        setError("Error checking existing profile. Please try again.");
-        setLoading(false);
-        return;
-      }
 
       if (existingProfile) {
         setError("Profile already exists. Redirecting to home...");
@@ -131,53 +95,46 @@ export default function RegisterScreen ()  {
 
       let avatarUrl: string | null = null;
 
-      // Upload avatar if provided
       if (avatarFile) {
         setUploadProgress(25);
+        const fileExt = avatarFile.name.split(".").pop()?.toLowerCase();
+        const fileName = `${user.id}_${Date.now()}.${fileExt}`;
 
-        try {
-          const fileExt = avatarFile.name.split(".").pop()?.toLowerCase();
-          const fileName = `${user.id}_${Date.now()}.${fileExt}`;
+        const { error: storageError } = await supabase.storage
+          .from("avatars")
+          .upload(`public/${fileName}`, avatarFile, {
+            cacheControl: "3600",
+            upsert: true,
+          });
 
-          const { data: storageData, error: storageError } = await supabase.storage
-            .from("avatars")
-            .upload(`public/${fileName}`, avatarFile, {
-              cacheControl: "3600",
-              upsert: true,
-            });
-
-          if (storageError) {
-            setError(`Avatar upload failed: ${storageError.message}`);
-            setLoading(false);
-            return;
-          }
-
-          const { data: { publicUrl } } = supabase.storage
-            .from("avatars")
-            .getPublicUrl(`public/${fileName}`);
-
-          avatarUrl = publicUrl;
-          setUploadProgress(75);
-        } catch (uploadError) {
-          console.error("Unexpected upload error:", uploadError);
-          setError("Failed to upload avatar. You can add it later.");
-          avatarUrl = null;
-          setUploadProgress(50);
+        if (storageError) {
+          setError(`Avatar upload failed: ${storageError.message}`);
+          setLoading(false);
+          return;
         }
+
+        const {
+          data: { publicUrl },
+        } = supabase.storage.from("avatars").getPublicUrl(`public/${fileName}`);
+
+        avatarUrl = publicUrl;
+        setUploadProgress(75);
       } else {
         setUploadProgress(50);
       }
 
-      const { error: insertError } = await supabase.from("profiles").insert([
-        {
-          id: user.id,
-          name: name.trim(),
-          mobile: mobile.trim(),
-          avatar_url: avatarUrl,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        },
-      ]);
+      const { error: insertError } = await supabase
+        .from("profiles")
+        .insert([
+          {
+            id: user.id,
+            name: name.trim(),
+            mobile: mobile.trim(),
+            avatar_url: avatarUrl,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          },
+        ]);
 
       setUploadProgress(100);
 
@@ -187,135 +144,130 @@ export default function RegisterScreen ()  {
         return;
       }
 
-      setError("");
-      setTimeout(() => {
-        navigate("/");
-      }, 1000);
+      setTimeout(() => navigate("/"), 1000);
     } catch (err) {
-      console.error("Unexpected registration error:", err);
+      console.error(err);
       setError("An unexpected error occurred. Please try again.");
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: "20px", maxWidth: "500px", margin: "0 auto", fontFamily: "Arial, sans-serif" }}>
-      <h1 style={{ textAlign: "center", color: "#333", marginBottom: "30px" }}>
-        Complete Your Profile
-      </h1>
+    <div className="min-h-screen bg-gradient-to-br from-green-50 to-white flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-lg bg-white rounded-2xl shadow-lg border border-green-100 p-8">
+        <h1 className="text-3xl font-extrabold text-green-800 text-center mb-6 drop-shadow-sm">
+          Complete Your Profile
+        </h1>
 
-      <div style={{ backgroundColor: "#f8f9fa", padding: "15px", borderRadius: "8px", marginBottom: "20px" }}>
-        <p style={{ margin: 0, color: "#666" }}>
-          <strong>Email:</strong> {email}
-        </p>
-      </div>
-
-      {error && (
-        <div style={{
-          color: "#dc3545",
-          marginBottom: "20px",
-          padding: "12px",
-          border: "1px solid #dc3545",
-          borderRadius: "6px",
-          backgroundColor: "#f8d7da"
-        }}>
-          {error}
-        </div>
-      )}
-
-      {loading && uploadProgress > 0 && (
-        <div style={{ marginBottom: "20px" }}>
-          <div style={{
-            width: "100%",
-            height: "6px",
-            backgroundColor: "#e9ecef",
-            borderRadius: "3px",
-            overflow: "hidden"
-          }}>
-            <div style={{
-              width: `${uploadProgress}%`,
-              height: "100%",
-              backgroundColor: "#28a745",
-              transition: "width 0.3s ease"
-            }}></div>
-          </div>
-          <p style={{ margin: "5px 0 0 0", fontSize: "14px", color: "#666" }}>
-            {uploadProgress === 100 ? "Registration complete!" : `Processing... ${uploadProgress}%`}
+        <div className="bg-green-50 border border-green-200 rounded-xl p-4 mb-6">
+          <p className="text-green-700 text-sm">
+            <strong>Email:</strong> {email}
           </p>
         </div>
-      )}
 
-      {/* Name and Mobile Inputs */}
-      <div style={{ marginBottom: "20px" }}>
-        <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#333" }}>Full Name *</label>
-        <input
-          type="text"
-          placeholder="Enter your full name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          style={{ width: "100%", padding: "12px", border: "2px solid #ddd", borderRadius: "6px", fontSize: "16px", boxSizing: "border-box" }}
-        />
-      </div>
-
-      <div style={{ marginBottom: "20px" }}>
-        <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#333" }}>Mobile Number *</label>
-        <input
-          type="tel"
-          placeholder="Enter 10-digit mobile number"
-          value={mobile}
-          onChange={(e) => setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))}
-          style={{ width: "100%", padding: "12px", border: "2px solid #ddd", borderRadius: "6px", fontSize: "16px", boxSizing: "border-box" }}
-        />
-      </div>
-
-      {/* Avatar Upload */}
-      <div style={{ marginBottom: "30px" }}>
-        <label style={{ display: "block", marginBottom: "8px", fontWeight: "bold", color: "#333" }}>Profile Picture (Optional)</label>
-        {avatarPreview ? (
-          <div style={{ textAlign: "center", marginBottom: "15px" }}>
-            <img
-              src={avatarPreview}
-              alt="Preview"
-              style={{ width: "120px", height: "120px", borderRadius: "50%", objectFit: "cover", border: "4px solid #007bff" }}
-            />
-            <br />
-            <button type="button" onClick={removeImage} style={{ marginTop: "10px", padding: "6px 12px", backgroundColor: "#dc3545", color: "white", border: "none", borderRadius: "4px", cursor: "pointer", fontSize: "14px" }}>
-              Remove Image
-            </button>
-          </div>
-        ) : (
-          <div style={{ border: "2px dashed #ddd", borderRadius: "8px", padding: "30px", textAlign: "center", backgroundColor: "#fafafa" }}>
-            <p style={{ margin: "0 0 10px 0", color: "#666" }}>Click to select an image or drag and drop</p>
-            <p style={{ margin: "0", fontSize: "14px", color: "#999" }}>Max size: 5MB | Formats: JPG, PNG, GIF</p>
+        {error && (
+          <div className="bg-red-100 border border-red-300 text-red-700 rounded-lg p-3 mb-4 text-sm">
+            {error}
           </div>
         )}
 
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          onChange={handleFileSelect}
-          style={{ width: "100%", padding: "10px", border: "2px solid #ddd", borderRadius: "6px", fontSize: "14px", boxSizing: "border-box", backgroundColor: "white" }}
-        />
-      </div>
+        {loading && uploadProgress > 0 && (
+          <div className="mb-4">
+            <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+              <div
+                className="bg-green-500 h-2 transition-all"
+                style={{ width: `${uploadProgress}%` }}
+              ></div>
+            </div>
+            <p className="text-gray-600 text-xs mt-1">
+              {uploadProgress === 100
+                ? "Registration complete!"
+                : `Processing... ${uploadProgress}%`}
+            </p>
+          </div>
+        )}
 
-      <button
-        onClick={handleRegister}
-        disabled={loading}
-        style={{
-          width: "100%",
-          padding: "15px",
-          fontSize: "18px",
-          fontWeight: "bold",
-          backgroundColor: loading ? "#6c757d" : "#007bff",
-          color: "white",
-          border: "none",
-          borderRadius: "8px",
-          cursor: loading ? "not-allowed" : "pointer",
-        }}
-      >
-        {loading ? "Creating Profile..." : "Complete Registration"}
-      </button>
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Full Name *
+          </label>
+          <input
+            type="text"
+            placeholder="Enter your full name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            className="w-full p-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
+          />
+        </div>
+
+        <div className="mb-4">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Mobile Number *
+          </label>
+          <input
+            type="tel"
+            placeholder="Enter 10-digit mobile number"
+            value={mobile}
+            onChange={(e) =>
+              setMobile(e.target.value.replace(/\D/g, "").slice(0, 10))
+            }
+            className="w-full p-3 border-2 border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-400"
+          />
+        </div>
+
+        <div className="mb-6">
+          <label className="block text-sm font-semibold text-gray-700 mb-2">
+            Profile Picture (Optional)
+          </label>
+
+          {avatarPreview ? (
+            <div className="flex flex-col items-center mb-4">
+              <img
+                src={avatarPreview}
+                alt="Preview"
+                className="w-28 h-28 rounded-full object-cover border-4 border-green-500"
+              />
+              <Button
+                variant="secondary"
+                className="mt-3"
+                onClick={removeImage}
+              >
+                Remove Image
+              </Button>
+            </div>
+          ) : (
+            <div
+              className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center bg-gray-50 cursor-pointer hover:border-green-400 hover:bg-green-50 transition"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              <p className="text-gray-600 text-sm">
+                Click to select an image or drag and drop
+              </p>
+              <p className="text-gray-400 text-xs">
+                Max size: 5MB | JPG, PNG, GIF
+              </p>
+            </div>
+          )}
+
+          {/* Hidden input, only triggered by clicking drag/drop area */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+        </div>
+
+        <Button
+          variant="secondary"
+          className="w-full py-3 text-lg font-bold rounded-2xl hover:bg-green-600"
+          disabled={loading}
+          onClick={handleRegister}
+        >
+          {loading ? "Creating Profile..." : "Complete Registration"}
+        </Button>
+      </div>
     </div>
   );
 };
