@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import NavBar from "@/components/navBar";
 import { Button } from "@/components/button";
 import { ToastNotification } from "../components/toastNotification";
+import { API_BASE_URL } from "@/config/api";
 
 export default function ResultScreen()  {
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +45,7 @@ export default function ResultScreen()  {
       formData.append("result", result);
       formData.append("confidence", confidence);
 
-      const res = await fetch("http://localhost:8000/save", {
+      const res = await fetch(`${API_BASE_URL}/save`, {
         method: "POST",
         body: formData,
       });

@@ -6,6 +6,7 @@ import CameraCapture from "@/components/cameraCapture";
 import { Button } from "@/components/button";
 import { supabase } from "@/services/supabase";
 import { useNavigate } from "react-router-dom";
+import { API_BASE_URL } from "@/config/api";
 
 type PredictionResponse = {
   result: string;
@@ -52,7 +53,8 @@ export default function HomeScreen () {
     formData.append("user_id", userId);
 
     try {
-      const res = await fetch("http://localhost:8000/predict", {
+      // ✅ Use the configured API URL
+      const res = await fetch(`${API_BASE_URL}/predict`, {
         method: "POST",
         body: formData,
       });
