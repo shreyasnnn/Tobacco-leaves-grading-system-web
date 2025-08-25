@@ -9,7 +9,16 @@ export const modelInfo = {
   datasetSize: 100000
 };
 
-export const grades = ["ChengShu", "JiaShu", "QianShu", "ShangShu"]; //check how the names are stored from backend file
+export const grades = ['Grade_1', 'Grade_4', 'Grade_5', 'RedThargu']; //check how the names are stored from backend file
+export type Grade = typeof grades[number];
+
+// Update grade colors mapping
+export const gradeColors = {
+  'Grade_1': '#10b981',    // Green - High quality
+  'Grade_4': '#f59e0b',    // Amber - Medium quality  
+  'Grade_5': '#6b7280',    // Gray - Lower quality
+  'RedThargu': '#ef4444',  // Red - Special grade
+} as const;
 
 export interface TeamMember {
   id: string;

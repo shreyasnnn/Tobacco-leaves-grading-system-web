@@ -4,18 +4,21 @@ import { getGradeColor } from "../utils/gradeColor";
 
 // Type for a single leave record
 export interface LeaveRecord {
-  user_id: number;
+  user_id: string; // Supabase auth uses UUID
   result: string;
   image_url: string;
-  confidence: string;
+  confidence: number;
+  model_version?: string; // ✅ Added as optional
+  status?: string;
   processed_at: string;
   color?: ReturnType<typeof getGradeColor>; // Optional color info
 }
 
 // Type for filters
 export interface HistoryFilters {
-  from?: string; // ISO date string
-  to?: string;   // ISO date string
+  user_id?: string | null;
+  from?: string;   // ISO date string
+  to?: string;     // ISO date string
   result?: string;
   minConf?: number;
   maxConf?: number;
@@ -25,7 +28,12 @@ export interface HistoryFilters {
 export async function apiLeaves(
   filters: HistoryFilters = {}
 ): Promise<{ data: (LeaveRecord & { color: ReturnType<typeof getGradeColor> })[] | null; error: any }> {
-  let query = supabase.from("upload_history").select("*");
+  let query = supabase.from("upload_history").select("*").order("processed_at", { ascending: false });
+
+  // Always filter by user_id if provided
+  if (filters.user_id) {
+    query = query.eq("user_id", filters.user_id);
+  }
 
   if (filters.from) query = query.gte("processed_at", filters.from);
   if (filters.to) query = query.lt("processed_at", filters.to);

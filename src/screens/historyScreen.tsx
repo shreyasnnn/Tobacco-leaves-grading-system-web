@@ -5,7 +5,39 @@ import "react-date-range/dist/styles.css";
 import "react-date-range/dist/theme/default.css";
 import NavBar from "@/components/navBar";
 import { grades } from "../dataController/index";
+import { getGradeColor } from "@/utils/gradeColor";
 import { Button } from "@/components/button";
+import { supabase } from "@/services/supabase";
+
+// Modal Component
+interface ModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
+      <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full m-4 max-h-[90vh] overflow-y-auto">
+        <div className="relative">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10 p-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Close modal"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 interface SelectionRange {
   startDate: Date;
@@ -18,6 +50,11 @@ export const HistoryScreen: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<any>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Modal states
+  const [selectedLeaf, setSelectedLeaf] = useState<LeaveRecord | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const [filters, setFilters] = useState<HistoryFilters>({});
   const [dateRange, setDateRange] = useState<SelectionRange>({
@@ -30,21 +67,89 @@ export const HistoryScreen: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Get current user ID from authentication
   useEffect(() => {
+    const getCurrentUserId = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) throw error;
+        
+        if (user) {
+          setUserId(user.id);
+        } else {
+          setError(new Error("User not authenticated"));
+        }
+      } catch (error) {
+        console.error("Failed to get user ID:", error);
+        setError(error);
+      }
+    };
+    
+    getCurrentUserId();
+  }, []);
+
+  // Fetch user-specific data
+  useEffect(() => {
+    if (!userId) return;
+    
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const { data, error } = await apiLeaves(filters);
-        if (error) setError(error);
-        else setData(data ?? []);
+        const userSpecificFilters = {
+          ...filters,
+          user_id: userId
+        };
+        
+        const { data, error } = await apiLeaves(userSpecificFilters);
+        if (error) {
+          setError(error);
+        } else {
+          setData(data ?? []);
+        }
       } catch (err) {
         setError(err);
       } finally {
         setIsLoading(false);
       }
     };
+    
     fetchData();
-  }, [filters]);
+  }, [userId, filters]);
+
+  // Modal handlers
+  const openDetails = (leaf: LeaveRecord) => {
+    setSelectedLeaf(leaf);
+    setIsModalOpen(true);
+  };
+
+  const closeDetails = () => {
+    setSelectedLeaf(null);
+    setIsModalOpen(false);
+  };
+
+  // Download handler
+  const downloadImage = async (url: string, filename: string) => {
+    try {
+      // Create a temporary anchor element to trigger download
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      // Clean up the object URL
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback: open in new window
+      window.open(url, '_blank');
+    }
+  };
 
   const handleDateChange = (ranges: { selection: SelectionRange }) => {
     const selection = ranges.selection;
@@ -63,12 +168,32 @@ export const HistoryScreen: React.FC = () => {
     setFilters({ ...filters, from, to });
   };
 
-  const handleResultChange = (result: string) =>
-    setFilters({ ...filters, result });
+  const handleResultChange = (result: string) => {
+    setFilters({ ...filters, result: result || undefined });
+    setCurrentPage(1);
+  };
 
-  const filteredData = data.filter((item) =>
-    item.result.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSearchChange = (searchValue: string) => {
+    setSearchTerm(searchValue);
+    setCurrentPage(1);
+  };
+
+  const clearFilters = () => {
+    setFilters({});
+    setSearchTerm("");
+    setDateRange({
+      startDate: new Date(),
+      endDate: new Date(),
+      key: "selection",
+    });
+    setCurrentPage(1);
+  };
+
+  // Client-side filtering for search
+  const filteredData = data.filter((item) => {
+    const searchMatch = item.result.toLowerCase().includes(searchTerm.toLowerCase());
+    return searchMatch;
+  });
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -87,18 +212,22 @@ export const HistoryScreen: React.FC = () => {
     });
   };
 
-  const getGradeColor = (grade: string) => {
-    switch (grade) {
-      case "Grade A":
-        return "bg-emerald-100 text-emerald-800 border-emerald-300";
-      case "Grade B":
-        return "bg-amber-100 text-amber-800 border-amber-300";
-      case "Grade C":
-        return "bg-blue-100 text-blue-800 border-blue-300";
-      default:
-        return "bg-gray-100 text-gray-800 border-gray-300";
-    }
-  };
+  // Show loading while getting user ID
+  if (!userId && !error) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
+        <NavBar />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex justify-center items-center h-64">
+            <div className="text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+              <p className="text-gray-500">Loading...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-green-50 to-white">
@@ -107,7 +236,7 @@ export const HistoryScreen: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-green-800 mb-2">
-            Prediction History
+            My Prediction History
           </h1>
           <p className="text-lg text-green-600">
             Review and manage your previous leaf analyses
@@ -142,7 +271,7 @@ export const HistoryScreen: React.FC = () => {
                   type="text"
                   placeholder="Search by grade..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => handleSearchChange(e.target.value)}
                   className="block w-full pl-10 pr-3 py-2.5 border border-gray-300 rounded-lg bg-gray-50 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-all"
                 />
               </div>
@@ -205,7 +334,21 @@ export const HistoryScreen: React.FC = () => {
                     editableDateInputs={true}
                     className="border-0"
                   />
-                  <div className="p-3 border-t flex justify-end">
+                  <div className="p-3 border-t flex justify-end gap-2">
+                    <Button
+                      onClick={() => {
+                        setFilters({ ...filters, from: undefined, to: undefined });
+                        setDateRange({
+                          startDate: new Date(),
+                          endDate: new Date(),
+                          key: "selection",
+                        });
+                        setIsDatePickerOpen(false);
+                      }}
+                      className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                    >
+                      Clear
+                    </Button>
                     <Button
                       onClick={() => setIsDatePickerOpen(false)}
                       className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
@@ -216,14 +359,74 @@ export const HistoryScreen: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Clear All Filters Button */}
+            <div>
+              <Button
+                onClick={clearFilters}
+                className="px-4 py-2.5 bg-green-700 text-white rounded-lg hover:bg-green-600 focus:ring-2  transition-all"
+              >
+                Clear All
+              </Button>
+            </div>
           </div>
+
+          {/* Active Filters Display */}
+          {(filters.result || filters.from || searchTerm) && (
+            <div className="mt-4 flex flex-wrap gap-2">
+              <span className="text-sm text-gray-500">Active filters:</span>
+              {filters.result && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">
+                  Grade: {filters.result}
+                  <button
+                    onClick={() => handleResultChange("")}
+                    className="ml-1 text-emerald-600 hover:text-emerald-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {filters.from && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                  Date: {filters.from} to {filters.to}
+                  <button
+                    onClick={() => {
+                      setFilters({ ...filters, from: undefined, to: undefined });
+                      setDateRange({
+                        startDate: new Date(),
+                        endDate: new Date(),
+                        key: "selection",
+                      });
+                    }}
+                    className="ml-1 text-blue-600 hover:text-blue-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+              {searchTerm && (
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                  Search: "{searchTerm}"
+                  <button
+                    onClick={() => handleSearchChange("")}
+                    className="ml-1 text-yellow-600 hover:text-yellow-800"
+                  >
+                    ×
+                  </button>
+                </span>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Results Section */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           {isLoading ? (
             <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600"></div>
+              <div className="text-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-emerald-600 mx-auto mb-4"></div>
+                <p className="text-gray-500">Loading your predictions...</p>
+              </div>
             </div>
           ) : error ? (
             <div className="text-center p-8">
@@ -273,11 +476,21 @@ export const HistoryScreen: React.FC = () => {
                 </svg>
               </div>
               <h3 className="text-lg font-medium text-gray-900 mb-1">
-                No results found
+                No predictions found
               </h3>
               <p className="text-gray-500">
-                Try adjusting your search or filter criteria
+                {Object.keys(filters).length > 0 || searchTerm
+                  ? "Try adjusting your search or filter criteria"
+                  : "You haven't made any predictions yet. Start by analyzing some tobacco leaves!"}
               </p>
+              {(Object.keys(filters).length > 0 || searchTerm) && (
+                <Button
+                  onClick={clearFilters}
+                  className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                >
+                  Clear Filters
+                </Button>
+              )}
             </div>
           ) : (
             <>
@@ -304,7 +517,7 @@ export const HistoryScreen: React.FC = () => {
                 <div className="divide-y divide-gray-200">
                   {paginatedData.map((leave, index) => (
                     <div
-                      key={leave.user_id + index}
+                      key={`${leave.user_id}-${leave.processed_at}-${index}`}
                       className="grid grid-cols-12 gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
                     >
                       {/* Image */}
@@ -312,14 +525,19 @@ export const HistoryScreen: React.FC = () => {
                         <img
                           src={leave.image_url}
                           alt={`${leave.result}`}
-                          className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                          className="w-16 h-16 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                          onClick={() => openDetails(leave)}
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = "/placeholder-leaf.jpg";
+                          }}
                         />
                       </div>
 
-                      {/* Grade - Using the color utility */}
+                      {/* Grade */}
                       <div className="col-span-2 flex items-center">
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${leave.color?.full}`}
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getGradeColor(leave.result).full}`}
                         >
                           {leave.result}
                         </span>
@@ -335,7 +553,13 @@ export const HistoryScreen: React.FC = () => {
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
-                              className="bg-emerald-500 h-2 rounded-full"
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                leave.confidence >= 80 
+                                  ? 'bg-green-500' 
+                                  : leave.confidence >= 60 
+                                    ? 'bg-yellow-500' 
+                                    : 'bg-red-500'
+                              }`}
                               style={{ width: `${leave.confidence}%` }}
                             ></div>
                           </div>
@@ -349,10 +573,19 @@ export const HistoryScreen: React.FC = () => {
 
                       {/* Actions */}
                       <div className="col-span-2 flex items-center gap-3">
-                        <button className="text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                        <button 
+                          onClick={() => openDetails(leave)}
+                          className="text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                        >
                           Details
                         </button>
-                        <button className="text-gray-600 hover:text-gray-800 hover:bg-gray-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors">
+                        <button
+                          onClick={() => {
+                            const filename = `${leave.result}_${new Date(leave.processed_at).toISOString().split('T')[0]}_${leave.user_id.substring(0, 8)}.jpg`;
+                            downloadImage(leave.image_url, filename);
+                          }}
+                          className="text-gray-600 hover:text-gray-800 hover:bg-gray-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                        >
                           Download
                         </button>
                       </div>
@@ -365,21 +598,24 @@ export const HistoryScreen: React.FC = () => {
               <div className="md:hidden space-y-3 p-4">
                 {paginatedData.map((leave, index) => (
                   <div
-                    key={leave.user_id + index}
+                    key={`${leave.user_id}-${leave.processed_at}-${index}`}
                     className="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow"
                   >
                     <div className="flex gap-4">
                       <img
                         src={leave.image_url}
                         alt={leave.result}
-                        className="w-20 h-20 rounded-lg object-cover border border-gray-200"
+                        className="w-20 h-20 rounded-lg object-cover border border-gray-200 cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => openDetails(leave)}
+                        onError={(e) => {
+                          const target = e.target as HTMLImageElement;
+                          target.src = "/placeholder-leaf.jpg";
+                        }}
                       />
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getGradeColor(
-                              leave.result
-                            )}`}
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getGradeColor(leave.result).full}`}
                           >
                             {leave.result}
                           </span>
@@ -398,16 +634,31 @@ export const HistoryScreen: React.FC = () => {
                           </div>
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
-                              className="bg-emerald-500 h-2 rounded-full"
+                              className={`h-2 rounded-full transition-all duration-300 ${
+                                leave.confidence >= 80 
+                                  ? 'bg-green-500' 
+                                  : leave.confidence >= 60 
+                                    ? 'bg-yellow-500' 
+                                    : 'bg-red-500'
+                              }`}
                               style={{ width: `${leave.confidence}%` }}
                             ></div>
                           </div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <button className="flex-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                          <button 
+                            onClick={() => openDetails(leave)}
+                            className="flex-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                          >
                             Details
                           </button>
-                          <button className="flex-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors">
+                          <button
+                            onClick={() => {
+                              const filename = `${leave.result}_${new Date(leave.processed_at).toISOString().split('T')[0]}_${leave.user_id.substring(0, 8)}.jpg`;
+                              downloadImage(leave.image_url, filename);
+                            }}
+                            className="flex-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
+                          >
                             Download
                           </button>
                         </div>
@@ -456,7 +707,7 @@ export const HistoryScreen: React.FC = () => {
                       <button
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
-                        className={`px-3 py-1 text-sm border rounded-lg ${
+                        className={`px-3 py-1 text-sm border rounded-lg transition-colors ${
                           currentPage === pageNum
                             ? "bg-emerald-600 text-white border-emerald-600"
                             : "bg-white border-gray-300 hover:bg-gray-50"
@@ -467,7 +718,7 @@ export const HistoryScreen: React.FC = () => {
                     );
                   })}
                   {totalPages > 5 && currentPage < totalPages - 2 && (
-                    <span className="px-3 py-1 text-sm">...</span>
+                    <span className="px-3 py-1 text-sm text-gray-400">...</span>
                   )}
                 </div>
                 <button
@@ -483,6 +734,145 @@ export const HistoryScreen: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Details Modal */}
+        {isModalOpen && selectedLeaf && (
+          <Modal isOpen={isModalOpen} onClose={closeDetails}>
+            <div className="p-6">
+              {/* Header */}
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                  Prediction Details
+                </h2>
+                <div className="h-px bg-gradient-to-r from-emerald-400 to-blue-500"></div>
+              </div>
+
+              {/* Content */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Image */}
+                <div className="space-y-4 flex flex-col items-center">
+                  <div>
+                    <img
+                    src={selectedLeaf.image_url}
+                    alt={selectedLeaf.result}
+                    className="rounded-xl max-h-96 object-contain"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = "/placeholder-leaf.jpg";
+                    }}
+                  />
+                  </div>
+                  <button
+                    onClick={() => {
+                      const filename = `${selectedLeaf.result}_${new Date(selectedLeaf.processed_at).toISOString().split('T')[0]}_detailed.jpg`;
+                      downloadImage(selectedLeaf.image_url, filename);
+                    }}
+                    className="w-full px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Download Full Image
+                  </button>
+                </div>
+
+                {/* Details */}
+                <div className="space-y-4">
+                  {/* Grade */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Predicted Grade</h3>
+                    <div className={`inline-flex items-center px-3 py-2 rounded-full text-sm font-medium border ${getGradeColor(selectedLeaf.result)}`}>
+                      {selectedLeaf.result}
+                    </div>
+                  </div>
+
+                  {/* Confidence */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Confidence Level</h3>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 bg-gray-200 rounded-full h-3">
+                        <div
+                          className={`h-3 rounded-full transition-all duration-500 ${
+                            selectedLeaf.confidence >= 80 
+                              ? 'bg-green-500' 
+                              : selectedLeaf.confidence >= 60 
+                                ? 'bg-yellow-500' 
+                                : 'bg-red-500'
+                          }`}
+                          style={{ width: `${selectedLeaf.confidence}%` }}
+                        ></div>
+                      </div>
+                      <span className="text-lg font-bold text-gray-800">
+                        {selectedLeaf.confidence}%
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Analysis Date */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Analysis Date</h3>
+                    <p className="text-gray-800 font-medium">
+                      {formatDate(selectedLeaf.processed_at)}
+                    </p>
+                  </div>
+
+                  {/* Model Info */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">Model Information</h3>
+                    <div className="space-y-1 text-sm">
+                      <p><span className="font-medium">Version:</span> {selectedLeaf.model_version || 'tf2.20-mobilenetv2'}</p>
+                      <p><span className="font-medium">Status:</span> {selectedLeaf.status || 'Completed'}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Footer */}
+              <div className="mt-6 pt-4 border-t border-gray-200 flex justify-end gap-3">
+                <button
+                  onClick={closeDetails}
+                  className="px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                >
+                  Close
+                </button>
+                <button
+                  onClick={() => {
+                    const filename = `${selectedLeaf.result}_analysis_report.txt`;
+                    const reportContent = [
+                      `Tobacco Leaf Analysis Report`,
+                      `================================`,
+                      ``,
+                      `Predicted Grade: ${selectedLeaf.result}`,
+                      `Confidence Level: ${selectedLeaf.confidence}%`,
+                      `Analysis Date: ${formatDate(selectedLeaf.processed_at)}`,
+                      `Model Version: ${selectedLeaf.model_version || 'tf2.20-mobilenetv2'}`,
+                      `Status: ${selectedLeaf.status || 'Completed'}`,
+                      `User ID: ${selectedLeaf.user_id}`,
+                      ``,
+                      `Image URL: ${selectedLeaf.image_url}`,
+                      ``,
+                      `Generated by ToboGrade API v3.0`,
+                      `Report Date: ${new Date().toLocaleString()}`
+                    ].join('\n');
+                    
+                    const blob = new Blob([reportContent], { type: 'text/plain' });
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = filename;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                    window.URL.revokeObjectURL(url);
+                  }}
+                  className="px-6 py-2 bg-green-700 text-white rounded-lg hover:bg-green-600 transition-colors"
+                >
+                  Export Report
+                </button>
+              </div>
+            </div>
+          </Modal>
+        )}
       </div>
     </div>
   );
