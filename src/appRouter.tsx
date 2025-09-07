@@ -2,9 +2,9 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import { supabase } from "./services/supabase";
 import Spinner from "./components/spinner";
+import HomeScreen from "./screens/homeScreen";
 
 // Lazy imports
-const HomeScreen = lazy(() => import("./screens/homeScreen"));
 const LoginScreen = lazy(() => import("./screens/loginScreen"));
 const RegisterScreen = lazy(() => import("./screens/registerScreen"));
 const ResultScreen = lazy(() => import("./screens/resultScreen"));
