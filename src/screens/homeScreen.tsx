@@ -1,6 +1,6 @@
 import { DragDropUpload } from "@/components/drag&Drop";
 import { useState } from "react";
-import leaf from "../assets/images/leaf.jpg";
+import leaf from "../assets/images/leaf.webp";
 import NavBar from "../components/navBar";
 import CameraCapture from "@/components/cameraCapture";
 import { Button } from "@/components/button";
@@ -95,6 +95,7 @@ export default function HomeScreen () {
         <div className="flex justify-center">
           <div className="bg-white rounded-2xl shadow-lg p-4 border border-green-100 hover:shadow-xl transition-shadow">
             <img
+              rel="preload"
               src={previewImage}
               alt="Leaf Preview"
               className="rounded-xl max-h-[400px] object-contain"
