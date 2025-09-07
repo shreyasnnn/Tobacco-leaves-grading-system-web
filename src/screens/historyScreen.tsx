@@ -8,6 +8,8 @@ import { grades } from "../dataController/index";
 import { getGradeColor } from "@/utils/gradeColor";
 import { Button } from "@/components/button";
 import { supabase } from "@/services/supabase";
+import jsPDF from "jspdf";
+import html2canvas from "html2canvas";
 
 // Modal Component
 interface ModalProps {
@@ -28,8 +30,18 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, children }) => {
             className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10 p-2 rounded-full hover:bg-gray-100 transition-colors"
             aria-label="Close modal"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
           {children}
@@ -71,9 +83,12 @@ export const HistoryScreen: React.FC = () => {
   useEffect(() => {
     const getCurrentUserId = async () => {
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const {
+          data: { user },
+          error,
+        } = await supabase.auth.getUser();
         if (error) throw error;
-        
+
         if (user) {
           setUserId(user.id);
         } else {
@@ -84,22 +99,22 @@ export const HistoryScreen: React.FC = () => {
         setError(error);
       }
     };
-    
+
     getCurrentUserId();
   }, []);
 
   // Fetch user-specific data
   useEffect(() => {
     if (!userId) return;
-    
+
     const fetchData = async () => {
       setIsLoading(true);
       try {
         const userSpecificFilters = {
           ...filters,
-          user_id: userId
+          user_id: userId,
         };
-        
+
         const { data, error } = await apiLeaves(userSpecificFilters);
         if (error) {
           setError(error);
@@ -112,7 +127,7 @@ export const HistoryScreen: React.FC = () => {
         setIsLoading(false);
       }
     };
-    
+
     fetchData();
   }, [userId, filters]);
 
@@ -134,20 +149,20 @@ export const HistoryScreen: React.FC = () => {
       const response = await fetch(url);
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
-      
-      const link = document.createElement('a');
+
+      const link = document.createElement("a");
       link.href = downloadUrl;
       link.download = filename;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      
+
       // Clean up the object URL
       window.URL.revokeObjectURL(downloadUrl);
     } catch (error) {
-      console.error('Download failed:', error);
+      console.error("Download failed:", error);
       // Fallback: open in new window
-      window.open(url, '_blank');
+      window.open(url, "_blank");
     }
   };
 
@@ -191,7 +206,9 @@ export const HistoryScreen: React.FC = () => {
 
   // Client-side filtering for search
   const filteredData = data.filter((item) => {
-    const searchMatch = item.result.toLowerCase().includes(searchTerm.toLowerCase());
+    const searchMatch = item.result
+      .toLowerCase()
+      .includes(searchTerm.toLowerCase());
     return searchMatch;
   });
 
@@ -337,7 +354,11 @@ export const HistoryScreen: React.FC = () => {
                   <div className="p-3 border-t flex justify-end gap-2">
                     <Button
                       onClick={() => {
-                        setFilters({ ...filters, from: undefined, to: undefined });
+                        setFilters({
+                          ...filters,
+                          from: undefined,
+                          to: undefined,
+                        });
                         setDateRange({
                           startDate: new Date(),
                           endDate: new Date(),
@@ -391,7 +412,11 @@ export const HistoryScreen: React.FC = () => {
                   Date: {filters.from} to {filters.to}
                   <button
                     onClick={() => {
-                      setFilters({ ...filters, from: undefined, to: undefined });
+                      setFilters({
+                        ...filters,
+                        from: undefined,
+                        to: undefined,
+                      });
                       setDateRange({
                         startDate: new Date(),
                         endDate: new Date(),
@@ -537,7 +562,9 @@ export const HistoryScreen: React.FC = () => {
                       {/* Grade */}
                       <div className="col-span-2 flex items-center">
                         <span
-                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${getGradeColor(leave.result).full}`}
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium border ${
+                            getGradeColor(leave.result).full
+                          }`}
                         >
                           {leave.result}
                         </span>
@@ -554,11 +581,11 @@ export const HistoryScreen: React.FC = () => {
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full transition-all duration-300 ${
-                                leave.confidence >= 80 
-                                  ? 'bg-green-500' 
-                                  : leave.confidence >= 60 
-                                    ? 'bg-yellow-500' 
-                                    : 'bg-red-500'
+                                leave.confidence >= 80
+                                  ? "bg-green-500"
+                                  : leave.confidence >= 60
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
                               }`}
                               style={{ width: `${leave.confidence}%` }}
                             ></div>
@@ -573,7 +600,7 @@ export const HistoryScreen: React.FC = () => {
 
                       {/* Actions */}
                       <div className="col-span-2 flex items-center gap-3">
-                        <button 
+                        <button
                           onClick={() => openDetails(leave)}
                           className="text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
                         >
@@ -581,7 +608,11 @@ export const HistoryScreen: React.FC = () => {
                         </button>
                         <button
                           onClick={() => {
-                            const filename = `${leave.result}_${new Date(leave.processed_at).toISOString().split('T')[0]}_${leave.user_id.substring(0, 8)}.jpg`;
+                            const filename = `${leave.result}_${
+                              new Date(leave.processed_at)
+                                .toISOString()
+                                .split("T")[0]
+                            }_${leave.user_id.substring(0, 8)}.jpg`;
                             downloadImage(leave.image_url, filename);
                           }}
                           className="text-gray-600 hover:text-gray-800 hover:bg-gray-50 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
@@ -615,7 +646,9 @@ export const HistoryScreen: React.FC = () => {
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getGradeColor(leave.result).full}`}
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
+                              getGradeColor(leave.result).full
+                            }`}
                           >
                             {leave.result}
                           </span>
@@ -635,18 +668,18 @@ export const HistoryScreen: React.FC = () => {
                           <div className="w-full bg-gray-200 rounded-full h-2">
                             <div
                               className={`h-2 rounded-full transition-all duration-300 ${
-                                leave.confidence >= 80 
-                                  ? 'bg-green-500' 
-                                  : leave.confidence >= 60 
-                                    ? 'bg-yellow-500' 
-                                    : 'bg-red-500'
+                                leave.confidence >= 80
+                                  ? "bg-green-500"
+                                  : leave.confidence >= 60
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
                               }`}
                               style={{ width: `${leave.confidence}%` }}
                             ></div>
                           </div>
                         </div>
                         <div className="mt-3 flex gap-2">
-                          <button 
+                          <button
                             onClick={() => openDetails(leave)}
                             className="flex-1 text-emerald-600 hover:text-emerald-800 hover:bg-emerald-50 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
                           >
@@ -654,7 +687,11 @@ export const HistoryScreen: React.FC = () => {
                           </button>
                           <button
                             onClick={() => {
-                              const filename = `${leave.result}_${new Date(leave.processed_at).toISOString().split('T')[0]}_${leave.user_id.substring(0, 8)}.jpg`;
+                              const filename = `${leave.result}_${
+                                new Date(leave.processed_at)
+                                  .toISOString()
+                                  .split("T")[0]
+                              }_${leave.user_id.substring(0, 8)}.jpg`;
                               downloadImage(leave.image_url, filename);
                             }}
                             className="flex-1 text-gray-600 hover:text-gray-800 hover:bg-gray-50 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors"
@@ -753,24 +790,38 @@ export const HistoryScreen: React.FC = () => {
                 <div className="space-y-4 flex flex-col items-center">
                   <div>
                     <img
-                    src={selectedLeaf.image_url}
-                    alt={selectedLeaf.result}
-                    className="rounded-xl max-h-96 object-contain"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.src = "/placeholder-leaf.jpg";
-                    }}
-                  />
+                      src={selectedLeaf.image_url}
+                      alt={selectedLeaf.result}
+                      className="rounded-xl max-h-96 object-contain"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = "/placeholder-leaf.jpg";
+                      }}
+                    />
                   </div>
                   <button
                     onClick={() => {
-                      const filename = `${selectedLeaf.result}_${new Date(selectedLeaf.processed_at).toISOString().split('T')[0]}_detailed.jpg`;
+                      const filename = `${selectedLeaf.result}_${
+                        new Date(selectedLeaf.processed_at)
+                          .toISOString()
+                          .split("T")[0]
+                      }_detailed.jpg`;
                       downloadImage(selectedLeaf.image_url, filename);
                     }}
                     className="w-full px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    <svg
+                      className="w-4 h-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                     Download Full Image
                   </button>
@@ -780,24 +831,32 @@ export const HistoryScreen: React.FC = () => {
                 <div className="space-y-4">
                   {/* Grade */}
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-600 mb-2">Predicted Grade</h3>
-                    <div className={`inline-flex items-center px-3 py-2 rounded-full text-sm font-medium border ${getGradeColor(selectedLeaf.result)}`}>
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">
+                      Predicted Grade
+                    </h3>
+                    <div
+                      className={`inline-flex items-center px-3 py-2 rounded-full text-sm font-medium border ${getGradeColor(
+                        selectedLeaf.result
+                      )}`}
+                    >
                       {selectedLeaf.result}
                     </div>
                   </div>
 
                   {/* Confidence */}
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-600 mb-2">Confidence Level</h3>
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">
+                      Confidence Level
+                    </h3>
                     <div className="flex items-center gap-3">
                       <div className="flex-1 bg-gray-200 rounded-full h-3">
                         <div
                           className={`h-3 rounded-full transition-all duration-500 ${
-                            selectedLeaf.confidence >= 80 
-                              ? 'bg-green-500' 
-                              : selectedLeaf.confidence >= 60 
-                                ? 'bg-yellow-500' 
-                                : 'bg-red-500'
+                            selectedLeaf.confidence >= 80
+                              ? "bg-green-500"
+                              : selectedLeaf.confidence >= 60
+                              ? "bg-yellow-500"
+                              : "bg-red-500"
                           }`}
                           style={{ width: `${selectedLeaf.confidence}%` }}
                         ></div>
@@ -810,7 +869,9 @@ export const HistoryScreen: React.FC = () => {
 
                   {/* Analysis Date */}
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-600 mb-2">Analysis Date</h3>
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">
+                      Analysis Date
+                    </h3>
                     <p className="text-gray-800 font-medium">
                       {formatDate(selectedLeaf.processed_at)}
                     </p>
@@ -818,10 +879,18 @@ export const HistoryScreen: React.FC = () => {
 
                   {/* Model Info */}
                   <div className="bg-gray-50 rounded-lg p-4">
-                    <h3 className="text-sm font-medium text-gray-600 mb-2">Model Information</h3>
+                    <h3 className="text-sm font-medium text-gray-600 mb-2">
+                      Model Information
+                    </h3>
                     <div className="space-y-1 text-sm">
-                      <p><span className="font-medium">Version:</span> {selectedLeaf.model_version || 'tf2.20-mobilenetv2'}</p>
-                      <p><span className="font-medium">Status:</span> {selectedLeaf.status || 'Completed'}</p>
+                      <p>
+                        <span className="font-medium">Version:</span>{" "}
+                        {selectedLeaf.model_version || "tf2.20-mobilenetv2"}
+                      </p>
+                      <p>
+                        <span className="font-medium">Status:</span>{" "}
+                        {selectedLeaf.status || "Completed"}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -836,38 +905,70 @@ export const HistoryScreen: React.FC = () => {
                   Close
                 </button>
                 <button
-                  onClick={() => {
-                    const filename = `${selectedLeaf.result}_analysis_report.txt`;
-                    const reportContent = [
-                      `Tobacco Leaf Analysis Report`,
-                      `================================`,
-                      ``,
-                      `Predicted Grade: ${selectedLeaf.result}`,
-                      `Confidence Level: ${selectedLeaf.confidence}%`,
-                      `Analysis Date: ${formatDate(selectedLeaf.processed_at)}`,
-                      `Model Version: ${selectedLeaf.model_version || 'tf2.20-mobilenetv2'}`,
-                      `Status: ${selectedLeaf.status || 'Completed'}`,
-                      `User ID: ${selectedLeaf.user_id}`,
-                      ``,
-                      `Image URL: ${selectedLeaf.image_url}`,
-                      ``,
-                      `Generated by ToboGrade API v3.0`,
-                      `Report Date: ${new Date().toLocaleString()}`
-                    ].join('\n');
-                    
-                    const blob = new Blob([reportContent], { type: 'text/plain' });
-                    const url = window.URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = filename;
-                    document.body.appendChild(link);
-                    link.click();
-                    document.body.removeChild(link);
-                    window.URL.revokeObjectURL(url);
+                  onClick={async () => {
+                    if (!selectedLeaf) return;
+
+                    const pdf = new jsPDF({
+                      orientation: "portrait",
+                      unit: "px",
+                      format: "a4",
+                    });
+
+                    // Fetch the image and convert to Base64
+                    const image = new Image();
+                    image.crossOrigin = "anonymous"; // Ensure no CORS issues
+                    image.src = selectedLeaf.image_url;
+
+                    image.onload = () => {
+                      const pageWidth = pdf.internal.pageSize.getWidth();
+                      const pageHeight = pdf.internal.pageSize.getHeight();
+
+                      // Resize image to fit width
+                      const ratio = Math.min(
+                        pageWidth / image.width,
+                        250 / image.height
+                      ); // limit image height
+                      const imgWidth = image.width * ratio;
+                      const imgHeight = image.height * ratio;
+
+                      pdf.text("Tobacco Leaf Analysis Report", 20, 30);
+                      pdf.addImage(image, "JPEG", 20, 50, imgWidth, imgHeight);
+
+                      // Add report details below the image
+                      const details = [
+                        `Predicted Grade: ${selectedLeaf.result}`,
+                        `Confidence Level: ${selectedLeaf.confidence}%`,
+                        `Analysis Date: ${formatDate(
+                          selectedLeaf.processed_at
+                        )}`,
+                        `Model Version: ${
+                          selectedLeaf.model_version || "tf2.20-mobilenetv2"
+                        }`,
+                        `Status: ${selectedLeaf.status || "Completed"}`,
+                        `User ID: ${selectedLeaf.user_id}`,
+                        ``,
+                        `Generated by ToboGrade API v3.0`,
+                        `Report Date: ${new Date().toLocaleString()}`,
+                      ];
+
+                      let yPos = 50 + imgHeight + 30; // start below image
+                      details.forEach((line) => {
+                        pdf.text(line, 20, yPos);
+                        yPos += 20;
+                      });
+
+                      // Save PDF
+                      pdf.save(`${selectedLeaf.result}_analysis_report.pdf`);
+                    };
+
+                    image.onerror = (err) => {
+                      console.error("Failed to load image for PDF:", err);
+                      alert("Failed to generate PDF with image.");
+                    };
                   }}
                   className="px-6 py-2 bg-green-700 text-white rounded-lg hover:bg-green-600 transition-colors"
                 >
-                  Export Report
+                  Export PDF Report
                 </button>
               </div>
             </div>

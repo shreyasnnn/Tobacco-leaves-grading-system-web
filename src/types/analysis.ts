@@ -1,7 +1,7 @@
 // types/analytics.ts
-import {grade} from '../dataController/index'
+import {grades} from '../dataController/index'
 
-export type Grade = typeof grade[number]; 
+export type Grade = typeof grades[number]; 
 export interface GradeDistribution {
   grade: string;
   count: number;

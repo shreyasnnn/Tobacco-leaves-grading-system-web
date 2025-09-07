@@ -1,8 +1,8 @@
-import Smitha from "../assets/images/Smitha.jpg"
-import Shreyas from "../assets/images/shreyas.jpg"
-import Adnan from "../assets/images/Adnan.jpg"
-import Varun from "../assets/images/Varun.jpg"
-import Pranav from "../assets/images/Pranav.jpg"
+import Smitha from "../assets/images/Smitha.webp"
+import Shreyas from "../assets/images/shreyas.webp"
+import Adnan from "../assets/images/Adnan.webp"
+import Varun from "../assets/images/Varun.webp"
+import Pranav from "../assets/images/Pranav.webp"
 
 export const modelInfo = {
   version: "V1.2",
