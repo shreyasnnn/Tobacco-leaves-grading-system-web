@@ -2,10 +2,10 @@ import React, { useEffect, useState } from "react";
 import { apiAnalytics } from "@/services/apiAnalysis";
 import { AnalyticsData } from "@/types/analysis";
 import NavBar from "@/components/navBar";
-import { getGradeColor, getProgressBarColor } from "@/utils/gradeColor";
+import { getGradeColor, getProgressBarColor, getChartColor } from "@/utils/gradeColor";
 import { supabase } from "@/services/supabase";
 
-export default function AnalysisScreen () {
+export default function AnalysisScreen() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<any>(null);
@@ -41,7 +41,7 @@ export default function AnalysisScreen () {
 
   // Fetch user-specific analytics data
   useEffect(() => {
-    if (!userId) return; // Wait for userId to be available
+    if (!userId) return;
     
     const fetchData = async () => {
       setIsLoading(true);
@@ -60,7 +60,7 @@ export default function AnalysisScreen () {
     };
     
     fetchData();
-  }, [userId]); // Depend on userId
+  }, [userId]);
 
   // Show loading while getting user ID
   if (!userId && !error) {
@@ -183,6 +183,8 @@ export default function AnalysisScreen () {
             {data.gradeDistribution.map((item) => {
               const maxHeight = 160;
               const barHeight = (item.percentage / 100) * maxHeight;
+              const gradeColor = getGradeColor(item.grade);
+              
               return (
                 <div key={item.grade} className="flex flex-col items-center">
                   <div className="relative">
@@ -192,7 +194,7 @@ export default function AnalysisScreen () {
                       </span>
                     </div>
                     <div
-                      className={`w-10 sm:w-16 ${getGradeColor(item.grade).full} rounded-t-sm transition-all duration-300 hover:opacity-80 cursor-pointer`}
+                      className={`w-10 sm:w-16 ${gradeColor.full} rounded-t-sm transition-all duration-300 hover:opacity-80 cursor-pointer`}
                       style={{ height: `${Math.max(barHeight, 8)}px` }}
                       onMouseEnter={(e) =>
                         setTooltip({
@@ -281,7 +283,7 @@ export default function AnalysisScreen () {
                 <svg className="w-full h-full" viewBox="0 0 300 100">
                   <polyline
                     fill="none"
-                    stroke="#15803D"
+                    stroke="#10b981"
                     strokeWidth="2"
                     points={data.qualityTrends
                       .map((item, index) => {
@@ -317,7 +319,7 @@ export default function AnalysisScreen () {
                         cx={x}
                         cy={y}
                         r="3"
-                        fill="#15803D"
+                        fill="#10b981"
                         className="cursor-pointer"
                         onMouseEnter={(e) =>
                           setTooltip({
@@ -419,5 +421,4 @@ export default function AnalysisScreen () {
       </div>
     </div>
   );
-};
-
+}

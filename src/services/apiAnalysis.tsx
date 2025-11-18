@@ -19,8 +19,11 @@ const gradeColors: Record<Grade, string> = Object.fromEntries(
 
 function normalizeGrade(value: string | null): Grade | null {
   if (!value) return null;
-  const cleaned = value.trim().toLowerCase();
-  const found = gradeList.find(g => g.toLowerCase() === cleaned);
+  const cleaned = value.trim().toLowerCase().replace(/[_\s-]/g, '');;
+  const found = gradeList.find(g => {
+    const normalized = g.toLowerCase().replace(/[_\s-]/g, '');
+    return normalized === cleaned;
+  });
   return found || null;
 }
 
